@@ -1,99 +1,153 @@
-
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
-import { useDiskStore, type DiskFormat, type DiskType } from '../store/diskStore';
 import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
+  Card, CardContent, CardHeader, CardTitle, CardDescription 
 } from '@/components/ui/card';
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from '@/components/ui/select';
 import { 
-  Form, 
-  FormControl, 
-  FormDescription, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
+  Form, FormControl, FormDescription, FormField, FormItem, FormLabel 
 } from '@/components/ui/form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
 import { HardDrive, Info, Sliders } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+
+type DiskFormat = 'raw' | 'qcow2' | 'vmdk' | 'vdi' | 'qed' | 'qcow' | 'luks'  | 'vpc' | 'VHDX';
+type DiskType = 'fixed' | 'dynamic';
+
+interface DiskInfo {
+  image: string;
+  fileFormat: string;
+  virtualSize: string;
+  diskSize: string;
+}
 
 const CreateVirtualDisk = () => {
-  const { disks, addDisk, convertDiskFormat, resizeDisk } = useDiskStore();
-  const [selectedDisk, setSelectedDisk] = useState<string>('');
-  const [selectedAction, setSelectedAction] = useState<string>('info');
-  const [newFormat, setNewFormat] = useState<DiskFormat>('qcow2');
-  const [newSize, setNewSize] = useState<number>(20);
-
   const form = useForm({
     defaultValues: {
       name: '',
       size: 20,
-      type: 'dynamic',
-      format: 'qcow2'
-    }
-  });
-  
-  // Create a separate form for disk management
-  const manageDiskForm = useForm({
-    defaultValues: {
-      diskId: '',
-      newFormat: 'qcow2',
-      newSize: 20
+      type: 'dynamic' as DiskType,
+      format: 'qcow2' as DiskFormat
     }
   });
 
-  const onSubmit = (values: any) => {
-    addDisk({
-      name: values.name,
-      size: Number(values.size),
-      type: values.type as DiskType,
-      format: values.format as DiskFormat
-    });
-    
-    toast.success('Virtual disk created successfully!');
-    form.reset();
+  const [disks, setDisks] = useState<string[]>([]);
+  const [selectedDisk, setSelectedDisk] = useState<string>('');
+  const [selectedAction, setSelectedAction] = useState<string>('info');
+  const [diskInfo, setDiskInfo] = useState<DiskInfo | null>(null);
+  const [newFormat, setNewFormat] = useState<DiskFormat>('qcow2');
+  const [newSize, setNewSize] = useState<number>(20);
+
+  const fetchDisks = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/virtual-disk');
+      if (!response.ok) throw new Error('Failed to fetch disks');
+      const data = await response.json();
+      setDisks(data);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load available disks');
+    }
   };
 
-  const handleConvert = () => {
-    if (selectedDisk) {
-      convertDiskFormat(selectedDisk, newFormat);
+  const fetchDiskInfo = async (diskName: string) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/virtual-disk/info/${diskName}`);
+      if (!response.ok) throw new Error('Failed to fetch disk info');
+      const data = await response.json();
+      setDiskInfo({
+        image: data.image || '',
+        fileFormat: data['file_format'] || '',
+        virtualSize: data['virtual_size'] || '',
+        diskSize: data['disk_size'] || ''
+      });
+    } catch (error) {
+      console.error(error);
+      setDiskInfo(null);
+      toast.error('Failed to fetch disk info');
+    }
+  };
+
+  useEffect(() => {
+    fetchDisks();
+  }, []);
+
+  useEffect(() => {
+    if (selectedDisk && selectedAction === 'info') {
+      fetchDiskInfo(selectedDisk);
+    }
+  }, [selectedDisk, selectedAction]);
+
+  const onSubmit = async (values: any) => {
+    try {
+      const response = await fetch('http://localhost:5000/api/virtual-disk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: values.name,
+          size: Number(values.size),
+          type: values.type,
+          format: values.format
+        })
+      });
+      if (!response.ok) throw new Error('Failed to create disk');
+      toast.success('Virtual disk created successfully!');
+      form.reset();
+      fetchDisks();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error creating virtual disk');
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!selectedDisk) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/virtual-disk/convert/${selectedDisk}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newFormat })
+      });
+      if (!response.ok) throw new Error('Failed to convert disk format');
       toast.success('Disk format converted successfully!');
+      fetchDisks();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error converting disk format');
     }
   };
 
-  const handleResize = () => {
-    if (selectedDisk) {
-      resizeDisk(selectedDisk, newSize);
+  const handleResize = async () => {
+    if (!selectedDisk) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/virtual-disk/resize/${selectedDisk}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newSize })
+      });
+      if (!response.ok) throw new Error('Failed to resize disk');
       toast.success('Disk resized successfully!');
+      fetchDisks();
+    } catch (error) {
+      console.error(error);
+      toast.error('Error resizing disk');
     }
   };
-
-  const selectedDiskInfo = disks.find(disk => disk.id === selectedDisk);
 
   return (
     <Layout title="Virtual Machine Manager">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold mb-8 text-center">Virtual Disk Management</h1>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Create Virtual Disk Section */}
+          {/* Create Disk Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -107,6 +161,7 @@ const CreateVirtualDisk = () => {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  {/* Disk Name */}
                   <FormField
                     control={form.control}
                     name="name"
@@ -122,7 +177,8 @@ const CreateVirtualDisk = () => {
                       </FormItem>
                     )}
                   />
-                  
+
+                  {/* Disk Size */}
                   <FormField
                     control={form.control}
                     name="size"
@@ -130,13 +186,7 @@ const CreateVirtualDisk = () => {
                       <FormItem>
                         <FormLabel>Size (GB)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number" 
-                            min="1" 
-                            step="1" 
-                            placeholder="Enter disk size in GB"
-                            {...field} 
-                          />
+                          <Input type="number" min="1" step="1" {...field} />
                         </FormControl>
                         <FormDescription>
                           Size of the disk in gigabytes
@@ -144,7 +194,8 @@ const CreateVirtualDisk = () => {
                       </FormItem>
                     )}
                   />
-                  
+
+                  {/* Disk Type and Format */}
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -152,10 +203,7 @@ const CreateVirtualDisk = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Disk Type</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select type" />
@@ -172,17 +220,14 @@ const CreateVirtualDisk = () => {
                         </FormItem>
                       )}
                     />
-                    
+
                     <FormField
                       control={form.control}
                       name="format"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Disk Format</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select format" />
@@ -193,6 +238,10 @@ const CreateVirtualDisk = () => {
                               <SelectItem value="qcow2">qcow2</SelectItem>
                               <SelectItem value="vmdk">vmdk</SelectItem>
                               <SelectItem value="vdi">vdi</SelectItem>
+                              <SelectItem value="qed">qed</SelectItem>
+                              <SelectItem value="qcow">qcow</SelectItem>
+                              <SelectItem value="vpc">vpc</SelectItem>
+                              <SelectItem value="VHDX">VHDX</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormDescription>
@@ -202,19 +251,16 @@ const CreateVirtualDisk = () => {
                       )}
                     />
                   </div>
-                  
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-[#3B46B2] hover:bg-[#2A3BAB]"
-                  >
+
+                  <Button type="submit" className="w-full bg-[#3B46B2] hover:bg-[#2A3BAB]">
                     Create Disk
                   </Button>
                 </form>
               </Form>
             </CardContent>
           </Card>
-          
-          {/* Manage Virtual Disks Section */}
+
+          {/* Manage Disks Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -228,72 +274,59 @@ const CreateVirtualDisk = () => {
             <CardContent>
               <div className="space-y-6">
                 <div>
-                  <Label htmlFor="select-disk">Select Disk</Label>
-                  <Select 
-                    onValueChange={setSelectedDisk} 
-                    value={selectedDisk}
-                  >
-                    <SelectTrigger id="select-disk">
+                  <Label>Select Disk</Label>
+                  <Select onValueChange={setSelectedDisk} value={selectedDisk}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Select a disk" />
                     </SelectTrigger>
                     <SelectContent>
                       {disks.length > 0 ? (
-                        disks.map(disk => (
-                          <SelectItem key={disk.id} value={disk.id}>
-                            {disk.name} ({disk.size}GB, {disk.format})
+                        disks.map((diskId) => (
+                          <SelectItem key={diskId} value={diskId}>
+                            {diskId}
                           </SelectItem>
                         ))
                       ) : (
-                        <SelectItem value="none" disabled>
-                          No disks available
-                        </SelectItem>
+                        <SelectItem value="none" disabled>No disks available</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {selectedDisk && (
                   <>
                     <Separator />
-                    
+
                     <Tabs 
                       defaultValue="info"
                       value={selectedAction}
                       onValueChange={setSelectedAction}
-                      className="w-full"
                     >
                       <TabsList className="grid grid-cols-3 mb-4">
                         <TabsTrigger value="info">Disk Info</TabsTrigger>
                         <TabsTrigger value="convert">Convert</TabsTrigger>
                         <TabsTrigger value="resize">Resize</TabsTrigger>
                       </TabsList>
-                      
-                      <TabsContent value="info" className="space-y-4">
-                        {selectedDiskInfo && (
-                          <div className="bg-gray-50 p-4 rounded-md">
-                            <h3 className="font-medium mb-2 flex items-center gap-1">
-                              <Info className="h-4 w-4" />
-                              Disk Information
-                            </h3>
-                            <div className="space-y-2 text-sm">
-                              <p><span className="font-semibold">Name:</span> {selectedDiskInfo.name}</p>
-                              <p><span className="font-semibold">Size:</span> {selectedDiskInfo.size} GB</p>
-                              <p><span className="font-semibold">Type:</span> {selectedDiskInfo.type}</p>
-                              <p><span className="font-semibold">Format:</span> {selectedDiskInfo.format}</p>
-                              <p><span className="font-semibold">Created:</span> {selectedDiskInfo.createdAt.toLocaleString()}</p>
-                            </div>
-                          </div>
+
+                      <TabsContent value="info">
+                        {diskInfo ? (
+                          <div className="bg-gray-50 p-4 rounded-md text-left space-y-2 break-words">
+                          <p className="break-words"><strong>Image:</strong> {diskInfo.image}</p>
+                          <p className="break-words"><strong>File Format:</strong> {diskInfo.fileFormat}</p>
+                          <p className="break-words"><strong>Virtual Size:</strong> {diskInfo.virtualSize}</p>
+                          <p className="break-words"><strong>Disk Size:</strong> {diskInfo.diskSize}</p>
+                        </div>
+                        
+                        ) : (
+                          <div className="text-gray-500 text-center">Loading disk info...</div>
                         )}
                       </TabsContent>
-                      
+
                       <TabsContent value="convert" className="space-y-4">
                         <div>
-                          <Label htmlFor="new-format">New Format</Label>
-                          <Select 
-                            onValueChange={(value) => setNewFormat(value as DiskFormat)} 
-                            value={newFormat}
-                          >
-                            <SelectTrigger id="new-format">
+                          <Label>New Format</Label>
+                          <Select onValueChange={(v) => setNewFormat(v as DiskFormat)} value={newFormat}>
+                            <SelectTrigger>
                               <SelectValue placeholder="Select new format" />
                             </SelectTrigger>
                             <SelectContent>
@@ -301,46 +334,36 @@ const CreateVirtualDisk = () => {
                               <SelectItem value="qcow2">qcow2</SelectItem>
                               <SelectItem value="vmdk">vmdk</SelectItem>
                               <SelectItem value="vdi">vdi</SelectItem>
+                              <SelectItem value="qed">qed</SelectItem>
+                              <SelectItem value="qcow">qcow</SelectItem>
+                              <SelectItem value="luks">luks</SelectItem>
+                              <SelectItem value="vpc">vpc</SelectItem>
+                              <SelectItem value="VHDX">VHDX</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <Button 
-                          onClick={handleConvert} 
-                          className="w-full"
-                        >
+                        <Button onClick={handleConvert} className="w-full">
                           Convert Format
                         </Button>
                       </TabsContent>
-                      
+
                       <TabsContent value="resize" className="space-y-4">
                         <div>
-                          <Label htmlFor="new-size">New Size (GB)</Label>
-                          <Input 
-                            id="new-size"
-                            type="number" 
-                            min="1" 
+                          <Label>New Size (GB)</Label>
+                          <Input
+                            type="number"
+                            min="1"
                             step="1"
-                            value={newSize} 
-                            onChange={(e) => setNewSize(Number(e.target.value))} 
+                            value={newSize}
+                            onChange={(e) => setNewSize(Number(e.target.value))}
                           />
                         </div>
-                        <Button 
-                          onClick={handleResize} 
-                          className="w-full"
-                        >
+                        <Button onClick={handleResize} className="w-full">
                           Resize Disk
                         </Button>
                       </TabsContent>
                     </Tabs>
                   </>
-                )}
-                
-                {disks.length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <HardDrive className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-                    <p>No virtual disks created yet</p>
-                    <p className="text-sm mt-1">Create one in the form on the left</p>
-                  </div>
                 )}
               </div>
             </CardContent>

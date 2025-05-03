@@ -1,8 +1,5 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import { useVMStore } from '../store/vmStore';
-import { useDiskStore } from '../store/diskStore';
 import { 
   Card, 
   CardContent, 
@@ -34,8 +31,7 @@ import { useForm } from 'react-hook-form';
 import { Cpu, HardDrive } from 'lucide-react';
 
 const CreateVirtualMachine = () => {
-  const { addVM } = useVMStore();
-  const { disks } = useDiskStore();
+  const [disks, setDisks] = useState<string[]>([]);
   const [isoFile, setIsoFile] = useState<File | null>(null);
 
   const form = useForm({
@@ -43,27 +39,64 @@ const CreateVirtualMachine = () => {
       name: '',
       cpu: 2,
       memory: 4,
-      diskId: ''
+      diskName: ''
     }
   });
 
-  const onSubmit = (values: any) => {
-    if (!values.diskId) {
+  const fetchDisks = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/virtual-disk');
+      if (!response.ok) {
+        throw new Error('Failed to fetch disks');
+      }
+      const data = await response.json(); // Expects a list of strings
+      setDisks(data);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to load available disks');
+    }
+  };
+
+  useEffect(() => {
+    fetchDisks();
+  }, []);
+
+  const onSubmit = async (values: any) => {
+    if (!values.diskName) {
       toast.error('Please select a disk for the virtual machine');
       return;
     }
 
-    addVM({
-      name: values.name,
-      cpu: values.cpu,
-      memory: values.memory,
-      diskId: values.diskId,
-      isoFile: isoFile ? isoFile.name : null
-    });
-    
-    toast.success('Virtual machine created successfully!');
-    form.reset();
-    setIsoFile(null);
+    const formData = new FormData();
+    formData.append('name', values.name);
+    formData.append('cpu', values.cpu.toString());
+    formData.append('memory', values.memory.toString());
+    formData.append('diskName', values.diskName);
+    if (isoFile) {
+      formData.append('isoFile', isoFile);
+    }
+
+    try {
+      // First API call: create the VM
+      const response = await fetch('http://localhost:5000/api/vms', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create VM');
+      }
+
+      const vmData = await response.json();
+
+      toast.success('Virtual machine created successfully!');
+
+      form.reset();
+      setIsoFile(null);
+    } catch (error) {
+      console.error(error);
+      toast.error('An error occurred while creating or registering the VM');
+    }
   };
 
   const handleIsoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,7 +140,7 @@ const CreateVirtualMachine = () => {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="cpu"
@@ -134,7 +167,7 @@ const CreateVirtualMachine = () => {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
                   name="memory"
@@ -161,10 +194,10 @@ const CreateVirtualMachine = () => {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
-                  name="diskId"
+                  name="diskName"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Virtual Disk</FormLabel>
@@ -179,9 +212,9 @@ const CreateVirtualMachine = () => {
                         </FormControl>
                         <SelectContent>
                           {disks.length > 0 ? (
-                            disks.map(disk => (
-                              <SelectItem key={disk.id} value={disk.id}>
-                                {disk.name} ({disk.size}GB, {disk.format})
+                            disks.map((diskName, idx) => (
+                              <SelectItem key={idx} value={diskName}>
+                                {diskName}
                               </SelectItem>
                             ))
                           ) : (
@@ -197,8 +230,7 @@ const CreateVirtualMachine = () => {
                     </FormItem>
                   )}
                 />
-                
-                {/* New ISO file selection field */}
+
                 <FormItem>
                   <FormLabel>Boot ISO Image</FormLabel>
                   <div className="flex items-center gap-2">
@@ -231,7 +263,7 @@ const CreateVirtualMachine = () => {
                     </p>
                   )}
                 </FormItem>
-                
+
                 <Button 
                   type="submit" 
                   className="w-full bg-[#7673FA] hover:bg-[#5D5AD5]"
@@ -239,7 +271,7 @@ const CreateVirtualMachine = () => {
                 >
                   Create Virtual Machine
                 </Button>
-                
+
                 {disks.length === 0 && (
                   <p className="text-center text-sm text-amber-600">
                     You need to create a virtual disk first before creating a virtual machine.
