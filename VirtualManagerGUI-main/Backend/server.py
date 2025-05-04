@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 import os
 from VirtualDisksFunctions import *
 
-UPLOAD_FOLDER = '/uploads'  
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'isofiles') 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
@@ -63,10 +63,8 @@ def get_disk_info(disk_id):
             'error': str(e)
         }), 500 
 
-
 @app.route('/api/vms', methods=['POST'])
 def createVirtualmachine():
-    
     name = request.form.get('name')
     cpu = request.form.get('cpu')
     memory = request.form.get('memory')
@@ -80,8 +78,11 @@ def createVirtualmachine():
 
     if iso_file:
         filename = iso_file.filename
-        iso_filepath = os.path.join(UPLOAD_FOLDER, filename)
-        iso_file.save(iso_filepath)
+        iso_filepath = os.path.abspath(os.path.join(UPLOAD_FOLDER, filename))  # Absolute path
+        try:
+            iso_file.save(iso_filepath)
+        except Exception as save_err:
+            return jsonify({'error': f'File saving failed: {str(save_err)}'}), 500
 
     try:
         run_qemu_vm(
@@ -95,6 +96,7 @@ def createVirtualmachine():
         return jsonify({'error': str(e)}), 502
 
     return jsonify({'message': f"Virtual machine '{name}' started successfully."})
+
 
 @app.route('/api/virtual-disk/resize/<disk_id>', methods=['POST'])
 def resize_virtual_disk(disk_id):

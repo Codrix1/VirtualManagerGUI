@@ -366,7 +366,7 @@ const CreateVirtualDisk = () => {
 
                       <TabsContent value="resize" className="space-y-4">
                         <div>
-                          <Label>New Size (GB)</Label>
+                          <Label>Add {newSize}(GB)</Label>
                           <Input
                             type="number"
                             min="1"

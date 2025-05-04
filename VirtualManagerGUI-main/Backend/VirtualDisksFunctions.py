@@ -3,7 +3,6 @@ import subprocess
 
 
 def create_disk(name, size, type, format):
-    print("noooooooooooooooooooo")
     folder_path = os.path.join(os.getcwd(), 'Backend/VImgs') 
     
     os.makedirs(folder_path, exist_ok=True)
@@ -36,11 +35,10 @@ def edit_format(disk, format):
     
     os.makedirs(folder_path, exist_ok=True)
     img_path = os.path.join(folder_path, f"{disk}")
-    output_path = os.path.join(folder_path, f"{disk.split('.')[0]}.{format}")
     command = [
         "qemu-img", "convert",
         "-O", format,
-        img_path, output_path
+        img_path, img_path
     ]
 
     try:
@@ -102,7 +100,6 @@ def get_info(disk: str):
                 key, value = line.split(':', 1)
                 parsed[key.strip().lower()] = value.strip()
 
-        # Optional: Normalize some keys for easier frontend use
         parsed = {
             'image': parsed.get('image', ''),
             'file_format': parsed.get('file format', ''),
