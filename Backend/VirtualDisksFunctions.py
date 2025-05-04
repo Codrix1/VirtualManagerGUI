@@ -1,17 +1,17 @@
 import os
 import subprocess
 
+
 def create_disk(name, size, type, format):
     print("noooooooooooooooooooo")
-    folder_path = os.path.join(os.getcwd(), 'Backend/VImgs')  # <-- Folder for disks
+    folder_path = os.path.join(os.getcwd(), 'Backend/VImgs') 
     
-    # Make sure the folder exists
     os.makedirs(folder_path, exist_ok=True)
 
     img_path = os.path.join(folder_path, f"{name}.img")
 
     if type == "dynamic":
-        pass  # You could add options for dynamic vs fixed size if needed
+        pass  
 
     command = [
         "qemu-img", "create",
@@ -77,8 +77,6 @@ def resize(disk, Newsize):
 
 def get_info(disk: str):
     folder_path = os.path.join(os.getcwd(), 'Backend', 'VImgs')
-    
-    # Ensure folder exists
     os.makedirs(folder_path, exist_ok=True)
 
     img_path = os.path.join(folder_path, disk)

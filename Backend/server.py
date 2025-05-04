@@ -3,6 +3,10 @@ from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import os
 from VirtualDisksFunctions import *
+
+UPLOAD_FOLDER = '/uploads'  
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 app = Flask(__name__)
 CORS(app)
 
@@ -51,18 +55,18 @@ def get_disk_info(disk_id):
         parsed_info = get_info(disk_id)
         print(parsed_info)
         if 'error' in parsed_info:
-            return jsonify(parsed_info), 400  # Bad Request
+            return jsonify(parsed_info), 400 
         
-        return jsonify(parsed_info), 200  # Success
+        return jsonify(parsed_info), 200  
     except Exception as e:
         return jsonify({
             'error': str(e)
-        }), 500  # Internal Server Error
+        }), 500 
 
 
 @app.route('/api/vms', methods=['POST'])
 def createVirtualmachine():
-    # Check required fields
+    
     name = request.form.get('name')
     cpu = request.form.get('cpu')
     memory = request.form.get('memory')
@@ -71,21 +75,26 @@ def createVirtualmachine():
     if not all([name, cpu, memory, disk_name]):
         return jsonify({'error': 'Missing required fields'}), 400
 
-    
+    iso_file = request.files.get('isoFile')
+    iso_filepath = None
+
+    if iso_file:
+        filename = iso_file.filename
+        iso_filepath = os.path.join(UPLOAD_FOLDER, filename)
+        iso_file.save(iso_filepath)
+
     try:
-        # Run the VM
         run_qemu_vm(
             name=name,
             cpu=int(cpu),
             memory_gb=float(memory),
             disk_name=disk_name,
-            # iso_path=iso_filepath
+            iso_path=iso_filepath  
         )
     except Exception as e:
         return jsonify({'error': str(e)}), 502
 
-    return jsonify({'message': f"Virtual machine '{name}' started successfully."})        
-
+    return jsonify({'message': f"Virtual machine '{name}' started successfully."})
 
 @app.route('/api/virtual-disk/resize/<disk_id>', methods=['POST'])
 def resize_virtual_disk(disk_id):
@@ -114,7 +123,6 @@ def get_disks():
     if not os.path.exists(folder_path):
         return jsonify([])
 
-    # Just print all entries in the folder
     entries = os.listdir(folder_path)
     print("All entries:", entries)
 
