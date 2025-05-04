@@ -77,7 +77,7 @@ def createVirtualmachine():
         run_qemu_vm(
             name=name,
             cpu=int(cpu),
-            memory_gb=int(memory),
+            memory_gb=float(memory),
             disk_name=disk_name,
             # iso_path=iso_filepath
         )

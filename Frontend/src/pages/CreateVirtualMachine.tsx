@@ -62,11 +62,16 @@ const CreateVirtualMachine = () => {
   }, []);
 
   const onSubmit = async (values: any) => {
+    if (!values.name.trim()) {
+      toast.error('Please enter a name for the virtual machine');
+      return;
+    }
+  
     if (!values.diskName) {
       toast.error('Please select a disk for the virtual machine');
       return;
     }
-
+  
     const formData = new FormData();
     formData.append('name', values.name);
     formData.append('cpu', values.cpu.toString());
@@ -75,22 +80,21 @@ const CreateVirtualMachine = () => {
     if (isoFile) {
       formData.append('isoFile', isoFile);
     }
-
+  
     try {
-      // First API call: create the VM
       const response = await fetch('http://localhost:5000/api/vms', {
         method: 'POST',
         body: formData,
       });
-
+  
       if (!response.ok) {
         throw new Error('Failed to create VM');
       }
-
+  
       const vmData = await response.json();
-
+  
       toast.success('Virtual machine created successfully!');
-
+  
       form.reset();
       setIsoFile(null);
     } catch (error) {
@@ -153,7 +157,7 @@ const CreateVirtualMachine = () => {
                           <Slider
                             defaultValue={[field.value]}
                             min={1}
-                            max={16}
+                            max={4}
                             step={1}
                             onValueChange={(value) => field.onChange(value[0])}
                             className="flex-1"
@@ -180,8 +184,8 @@ const CreateVirtualMachine = () => {
                           <Slider
                             defaultValue={[field.value]}
                             min={1}
-                            max={64}
-                            step={1}
+                            max={10}
+                            step={0.1}
                             onValueChange={(value) => field.onChange(value[0])}
                             className="flex-1"
                           />

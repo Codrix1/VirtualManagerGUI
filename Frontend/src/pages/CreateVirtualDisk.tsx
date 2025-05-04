@@ -17,6 +17,8 @@ import { useForm } from 'react-hook-form';
 import { HardDrive, Info, Sliders } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import * as z from 'zod'; // <-- Add zod for schema validation
+import { zodResolver } from '@hookform/resolvers/zod'; // <-- Hook form with zod
 
 type DiskFormat = 'raw' | 'qcow2' | 'vmdk' | 'vdi' | 'qed' | 'qcow' | 'luks'  | 'vpc' | 'VHDX';
 type DiskType = 'fixed' | 'dynamic';
@@ -28,22 +30,31 @@ interface DiskInfo {
   diskSize: string;
 }
 
-const CreateVirtualDisk = () => {
-  const form = useForm({
-    defaultValues: {
-      name: '',
-      size: 20,
-      type: 'dynamic' as DiskType,
-      format: 'qcow2' as DiskFormat
-    }
-  });
+// Schema for validation
+const createDiskSchema = z.object({
+  name: z.string().min(1, 'Disk name is required'),
+  size: z.coerce.number().min(1, 'Size must be at least 1 GB'),
+  type: z.enum(['fixed', 'dynamic']),
+  format: z.enum(['raw', 'qcow2', 'vmdk', 'vdi', 'qed', 'qcow', 'luks', 'vpc', 'VHDX'])
+});
 
+const CreateVirtualDisk = () => {
   const [disks, setDisks] = useState<string[]>([]);
   const [selectedDisk, setSelectedDisk] = useState<string>('');
   const [selectedAction, setSelectedAction] = useState<string>('info');
   const [diskInfo, setDiskInfo] = useState<DiskInfo | null>(null);
   const [newFormat, setNewFormat] = useState<DiskFormat>('qcow2');
   const [newSize, setNewSize] = useState<number>(20);
+
+  const form = useForm<z.infer<typeof createDiskSchema>>({
+    resolver: zodResolver(createDiskSchema), // <-- Connect schema to form
+    defaultValues: {
+      name: '',
+      size: 20,
+      type: 'dynamic',
+      format: 'qcow2'
+    }
+  });
 
   const fetchDisks = async () => {
     try {
@@ -85,7 +96,13 @@ const CreateVirtualDisk = () => {
     }
   }, [selectedDisk, selectedAction]);
 
-  const onSubmit = async (values: any) => {
+  const onSubmit = async (values: z.infer<typeof createDiskSchema>) => {
+    // Extra Validation: Check if name already exists
+    if (disks.includes(values.name)) {
+      toast.error('A disk with this name already exists.');
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:5000/api/virtual-disk', {
         method: 'POST',
