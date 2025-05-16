@@ -4,7 +4,7 @@ from werkzeug.utils import secure_filename
 import os
 from VirtualDisksFunctions import *
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'isofiles') 
+UPLOAD_FOLDER = os.path.join(os.getcwd(),'Backend', 'isofiles') 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
