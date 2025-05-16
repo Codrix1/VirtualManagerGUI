@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { HardDrive, Cpu } from 'lucide-react';
+import { HardDrive, Cpu, Dock, Home, Database, Server } from 'lucide-react';
 
 interface HeaderProps {
   title: string;
@@ -19,18 +19,27 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
           <nav>
             <ul className="flex space-x-6">
               <li>
-                <Link to="/" className="hover:text-gray-200 transition-colors">
+                <Link to="/" className="hover:text-gray-200 transition-colors flex items-center gap-1">
+                  <Home className="h-4 w-4" />
                   Home
                 </Link>
               </li>
               <li>
-                <Link to="/create-virtual-disk" className="hover:text-gray-200 transition-colors">
+                <Link to="/create-virtual-disk" className="hover:text-gray-200 transition-colors flex items-center gap-1">
+                  <Database className="h-4 w-4" />
                   Virtual Disks
                 </Link>
               </li>
               <li>
-                <Link to="/create-virtual-machine" className="hover:text-gray-200 transition-colors">
+                <Link to="/create-virtual-machine" className="hover:text-gray-200 transition-colors flex items-center gap-1">
+                  <Server className="h-4 w-4" />
                   Virtual Machines
+                </Link>
+              </li>
+              <li>
+                <Link to="/docker" className="hover:text-gray-200 transition-colors flex items-center gap-1">
+                  <Dock className="h-4 w-4" />
+                  Docker
                 </Link>
               </li>
             </ul>
