@@ -13,7 +13,7 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
         <div className="flex justify-between items-center">
           <Link to="/" className="text-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-opacity">
             <Dock className="h-6 w-6" />
-            Docker Desktop
+            Virtual Gui
           </Link>
           <nav>
             <ul className="flex space-x-6">
