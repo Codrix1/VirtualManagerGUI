@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Save } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,9 +12,7 @@ const DockerfileTab = () => {
 
   const [availableFolders, setAvailableFolders] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState('');
-  const [fileName, setFileName] = useState('Dockerfile');
 
-  // Fetch folders from the backend
   useEffect(() => {
     fetch('http://localhost:5000/api/docker/folders')
       .then((res) => res.json())
@@ -30,7 +27,7 @@ const DockerfileTab = () => {
   }, []);
 
   const handleSaveDockerfile = async () => {
-    const fullPath = `${selectedFolder}/${fileName}`;
+    const fullPath = `${selectedFolder}/Dockerfile`;
 
     try {
       const response = await fetch('http://localhost:5000/api/dockerfile', {
@@ -74,19 +71,6 @@ const DockerfileTab = () => {
               </option>
             ))}
           </select>
-        </div>
-
-        {/* File Name Input */}
-        <div className="mb-4">
-          <label htmlFor="fileName" className="block mb-2 text-sm font-medium">
-            File Name
-          </label>
-          <Input
-            id="fileName"
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
-            placeholder="Enter file name (e.g., Dockerfile)"
-          />
         </div>
 
         {/* Dockerfile Content Input */}

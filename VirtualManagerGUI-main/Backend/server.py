@@ -253,6 +253,26 @@ def delete_docker_image(image_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/docker/containers/create', methods=['POST'])
+def create_container():
+    data = request.get_json()
+    image_id = data.get('imageId')
+    container_name = data.get('containerName')
+
+    if not image_id:
+        return jsonify({"error": "Image ID is required"}), 400
+
+    try:
+        container = client.containers.create(
+            image=image_id,
+            name=container_name if container_name else None,
+            detach=True
+        )
+        return jsonify({"message": "Container created", "containerId": container.id}), 201
+    except docker.errors.APIError as e:
+        return jsonify({"error": str(e)}), 500
+
+
 #--------List Image--------
 
 #--------List containers --------
