@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { HardDrive, Cpu, Dock, Home, Database, Server } from 'lucide-react';
@@ -13,8 +12,8 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
       <div className="container mx-auto px-4 py-4">
         <div className="flex justify-between items-center">
           <Link to="/" className="text-2xl font-bold flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <HardDrive className="h-6 w-6" />
-            {title}
+            <Dock className="h-6 w-6" />
+            Docker Desktop
           </Link>
           <nav>
             <ul className="flex space-x-6">
